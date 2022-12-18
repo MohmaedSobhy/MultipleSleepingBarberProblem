@@ -1,9 +1,7 @@
 package com.company.project;
 
 import java.util.ArrayList;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 
 public class Shop {
     private static Shop shop;
@@ -19,6 +17,7 @@ public class Shop {
 
     // use singleton pattern to create only one object
     // from class case i have only one shop
+
     private Shop(int weatingSeats, int barberCount) {
         WeatingSeats = weatingSeats;
         this.barberCount = barberCount;
@@ -28,7 +27,6 @@ public class Shop {
     public static Shop getInstance(int weatingSeats, int barberCount) {
         if (shop == null)
             shop = new Shop(weatingSeats, barberCount);
-
         return shop;
     }
 
@@ -47,18 +45,15 @@ public class Shop {
         BarberIsReady = new Semaphore(barberCount);
         CustomerIsReady = new Semaphore(0);
         customersQueue = new LinkedBlockingDeque<>(WeatingSeats);
-        ArrayList<Thread> threads = new ArrayList<>();
 
-        for (int i = 1; i <= barberCount; i++) {
-            threads.add(new Thread(new Barber(BarberIsReady, CustomerIsReady, customersQueue, "Barber" + i, barberCount)));
-        }
+        ExecutorService openShop = Executors.newWorkStealingPool();
+        for(int i=1;i<=barberCount;i++)
+            openShop.submit(new Barber(BarberIsReady, CustomerIsReady, customersQueue, "Barber" + i,barberCount));
 
-        for (Thread t : threads)
-            t.start();
-
-        int numberOfCustomer = 20;
+        int numberOfCustomer = 10;
         for (int i = 1; i <= numberOfCustomer; i++) {
             try {
+                long haircutTime = Math.round(1 + 3 * Math.random());
                 Thread.sleep(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -73,6 +68,7 @@ public class Shop {
     public void CustomerEnterSop(String customerName,int Id) {
         Id--;
         try {
+
             // check if No Seats Available enter condion and will be in weating list
             // and waite untill be Available chair from weating seats
             if (WeaitingSeatsAvailable.availablePermits() == 0) {
@@ -80,7 +76,6 @@ public class Shop {
                 System.out.println(customerName + " in Waeting List");
             }
             WeaitingSeatsAvailable.acquire();
-
             // send signal to barber to tell him Iam Here
             //frame.ChangeLabelText(customerName+" Enter Shop");
             CustomerIsReady.release();
